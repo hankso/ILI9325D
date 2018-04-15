@@ -1,13 +1,18 @@
 /*************************************************************************
-modified ILI9325D API for atmega328p(Arduino Nano/Uno)
+modified ILI9325D API for atmega328p(Arduino Nano/Uno) and WiringPi on ARM
 @author Hank
 @page https://github.com/hankso
 *************************************************************************/
 
+#if defined(__ARM__)
+#include <WiringPi.h>
+#elif defined(__ARDUINO__)
 #include <Arduino.h>
-#include "ILI9325D_328p.h"
+#endif
 
-ILI9325D_328p::ILI9325D_328p(
+#include "ILI9325D.h"
+
+ILI9325D::ILI9325D(
     uint8_t PIN_CS,
     uint8_t PIN_RS,
     uint8_t PIN_RST,
@@ -35,7 +40,7 @@ ILI9325D_328p::ILI9325D_328p(
     this->m_height = height;
 }
 
-void ILI9325D_328p::write8(uint8_t data)
+void ILI9325D::write8(uint8_t data)
 {
     digitalWrite(CS, LOW);
     for (uint8_t i=0; i < 8; i++, data>>=1)
@@ -47,13 +52,13 @@ void ILI9325D_328p::write8(uint8_t data)
     digitalWrite(CS, HIGH);
 }
 
-void ILI9325D_328p::write16(uint16_t data)
+void ILI9325D::write16(uint16_t data)
 {
     write8( *((uint8_t *)&data + 1) );
     write8( (uint8_t)data );
 }
 
-void ILI9325D_328p::WriteCommandData(uint8_t cmd, uint16_t data)
+void ILI9325D::WriteCommandData(uint8_t cmd, uint16_t data)
 {
     digitalWrite(RS, LOW); // command select
     write8(cmd);
@@ -61,7 +66,7 @@ void ILI9325D_328p::WriteCommandData(uint8_t cmd, uint16_t data)
     write16(data);
 }
 
-void ILI9325D_328p::DisplayON(void)
+void ILI9325D::DisplayON(void)
 {
     WriteCommandData(0x07, 0x0001); // set GON=0, DTE=0, D[1:0]=01
     delay(100); // wait for 100ms
@@ -72,7 +77,7 @@ void ILI9325D_328p::DisplayON(void)
     WriteCommandData(0x07, 0x0033); // set GON=1, DTE=1, D[1:0]=11
 }
 
-void ILI9325D_328p::DisplayOFF(void)
+void ILI9325D::DisplayOFF(void)
 {
     WriteCommandData(0x07, 0x0031); // set GON=1, DTE=1, D[1:0]=01
     delay(100); // wait for 100ms
@@ -83,7 +88,7 @@ void ILI9325D_328p::DisplayOFF(void)
 }
 
 
-void ILI9325D_328p::begin(void)
+void ILI9325D::begin(void)
 {
     //----------------- Power On Reset -----------------//
     digitalWrite(RST, HIGH);
@@ -171,14 +176,14 @@ void ILI9325D_328p::begin(void)
     clearWindow(0, 0, m_width, m_height);
 }
 
-void ILI9325D_328p::setXY(uint16_t x, uint16_t y)
+void ILI9325D::setXY(uint16_t x, uint16_t y)
 {
     // GRAM address set
     WriteCommandData(0x20, x > m_width ? 0 : x);
     WriteCommandData(0x21, y > m_height ? 0 : y);
 }
 
-void ILI9325D_328p::setWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1)
+void ILI9325D::setWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1)
 {
     x1 = x1 > 0x00EF ? 0x00EF : x1;
     y1 = y1 > 0x013F ? 0x013F : y1;
@@ -195,7 +200,7 @@ void ILI9325D_328p::setWindow(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1
     setXY(x0, y0);
 }
 
-void ILI9325D_328p::clearPixels(uint32_t pixels)
+void ILI9325D::clearPixels(uint32_t pixels)
 {
     digitalWrite(RS, LOW); // command select
     write8(0x22); // write GRAM 8 bit command
@@ -206,7 +211,7 @@ void ILI9325D_328p::clearPixels(uint32_t pixels)
     }
 }
 
-void ILI9325D_328p::clearWindow(uint16_t x, uint16_t y,
+void ILI9325D::clearWindow(uint16_t x, uint16_t y,
                                 uint16_t width, uint16_t height)
 {
     if (x == y == width == height == -1) {width = m_width; height = m_height;}
@@ -215,7 +220,7 @@ void ILI9325D_328p::clearWindow(uint16_t x, uint16_t y,
     clearPixels(pixels);
 }
 
-void ILI9325D_328p::clearLine(uint16_t line, bool vertical)
+void ILI9325D::clearLine(uint16_t line, bool vertical)
 {
     if (vertical)
         clearWindow(line, 0, 1, m_height);
@@ -223,7 +228,7 @@ void ILI9325D_328p::clearLine(uint16_t line, bool vertical)
         clearWindow(0, line, m_width, 1);
 }
 
-void ILI9325D_328p::drawPoint(uint16_t x, uint16_t y, uint16_t color)
+void ILI9325D::drawPoint(uint16_t x, uint16_t y, uint16_t color)
 {
     setXY(x, y);
     digitalWrite(RS, LOW); // command select
@@ -232,175 +237,3 @@ void ILI9325D_328p::drawPoint(uint16_t x, uint16_t y, uint16_t color)
     write16(color);
 }
 
-
-/*
-size_t LCD_ILI9325D::write(uint8_t c)
-{
-    if (c == '\n') {
-        m_x += (m_font + 1) << 3;
-        return 0;
-    } else if (c == '\r') {
-        setXY(m_x, m_x + 7, m_y, 319);
-        clearPixels((320 - m_y) * 8);
-        m_y = 0;
-        return 0;
-    }
-
-    if (m_font == FONT_SIZE_SMALL) {
-        setXY(m_x, m_x + 7, m_y, m_y + 4);
-        m_y += 6;
-        if (m_y >= 320) {
-            m_x += (m_font + 1) << 3;
-            m_y = 0;
-            if (m_x >= 240) {
-                m_x = 0;
-            }
-        }
-        if (c > 0x20 && c < 0x7f) {
-            byte pgm_buffer[5];
-            memcpy_P(pgm_buffer, &font5x8[c - 0x21], 5);
-            byte i = 4;
-            do {
-                unsigned char d = pgm_buffer[i];
-                for (byte j = 0; j < 8; j++, d >>= 1) {
-                    write(m_color[d & 1]);
-                }
-            } while (i--);
-        } else {
-            clearPixels(5 * 8);
-        }
-    } else {
-        setXY(m_x, m_x + 15, m_y, m_y + 7);
-        m_y += 9;
-        if (m_y >= 320) {
-            m_x += (m_font + 1) << 3;
-            m_y = 0;
-            if (m_x >= 240) {
-                m_x = 0;
-            }
-        }
-        if (c > 0x20 && c < 0x7f) {
-            byte pgm_buffer[16];
-            memcpy_P(pgm_buffer, &font8x16_terminal[c - 0x21], 16);
-            for (byte i = 0; i < 16; i += 2) {
-                unsigned char d = pgm_buffer[14 - i];
-                for (byte j = 0; j < 8; j++, d >>= 1) {
-                    write(m_color[d & 1]);
-                }
-                d = pgm_buffer[15 - i];
-                for (byte j = 0; j < 8; j++, d >>= 1) {
-                    write(m_color[d & 1]);
-                }
-            }
-        } else {
-            clearPixels(8 * 16);
-        }
-    }
-}
-
-void LCD_ILI9325D::writeDigit(byte n)
-{
-    if (m_font == FONT_SIZE_LARGE) {
-        setXY(m_x, m_x + 15, m_y, m_y + 15);
-        m_y += 16;
-        if (n <= 9) {
-            byte pgm_buffer[32];
-            memcpy_P(pgm_buffer, &digits16x16[n], sizeof(pgm_buffer));
-            for (byte i = 0; i < 16; i++) {
-                unsigned char d = pgm_buffer[15 - i];
-                for (byte j = 0; j < 8; j++, d >>= 1) {
-                    write(m_color[d & 1]);
-                }
-                d = pgm_buffer[31 - i];
-                for (byte j = 0; j < 8; j++, d >>= 1) {
-                    write(m_color[d & 1]);
-                }
-            }
-        } else {
-            clearPixels(16 * 16);
-        }
-    } else if (m_font == FONT_SIZE_XLARGE) {
-        setXY(m_x, m_x + 23, m_y, m_y + 15);
-        m_y += 18;
-        if (n <= 9) {
-            byte pgm_buffer[48];
-            memcpy_P(pgm_buffer, &digits16x24[n], sizeof(pgm_buffer));
-            for (int i = 0; i < 48; i += 3) {
-                unsigned char d = pgm_buffer[45 - i];
-                for (int j = 0; j < 8; j++, d >>= 1) {
-                    write(m_color[d & 1]);
-                }
-                d = pgm_buffer[46 - i];
-                for (int j = 0; j < 8; j++, d >>= 1) {
-                    write(m_color[d & 1]);
-                }
-                d = pgm_buffer[47 - i];
-                for (int j = 0; j < 8; j++, d >>= 1) {
-                    write(m_color[d & 1]);
-                }
-            }
-        } else {
-            clearPixels(16 * 24);
-        }
-    } else {
-        write(n <= 9 ? ('0' + n) : ' ');
-    }
-}
-
-void LCD_ILI9325D::draw(const PROGMEM byte* buffer, uint16_t width, uint16_t height)
-{
-    byte rows = height >> 3;
-    setXY(m_x, m_x + height - 1, m_y, m_y + width - 1);
-    uint16_t i = width - 1;
-    do {
-        for (uint8_t h = 0; h < rows; h++) {
-            byte d = pgm_read_byte_far(buffer + i + width * h);
-            for (byte j = 0; j < 8; j++, d >>= 1) {
-                write(m_color[d & 1]);
-            }
-        }
-    } while (i--);
-    m_y += width;
-}
-
-void LCD_ILI9325D::draw(const PROGMEM byte* buffer, uint16_t width, uint16_t height, byte scaleX, byte scaleY)
-{
-    byte rows = height >> 3;
-    if (scaleY == 0) scaleY = scaleX;
-    setXY(m_x, m_x + height - 1, m_y, m_y + width - 1);
-    uint16_t i = width - 1;
-    do {
-        for (byte n = 0; n < scaleX; n++) {
-            for (uint8_t h = 0; h < rows; h++) {
-                byte d = pgm_read_byte_far(buffer + i + width * h);
-                for (byte j = 0; j < 8; j++, d >>= 1) {
-                    for (byte m = 0; m < scaleY; m++) {
-                        write(m_color[d & 1]);
-                    }
-                }
-            }
-        }
-    } while (i--);
-    m_y += width * scaleX;
-}
-
-void LCD_ILI9325D::draw4bpp(const PROGMEM byte* buffer, uint16_t width, uint16_t height)
-{
-    char buf[240];
-    setXY(m_x, m_x + height * 2 - 1, m_y, m_y + width * 2- 1);
-    uint16_t i = width - 1;
-    do {
-        memcpy_P(buf, buffer + i * height * 2, height * 2);
-        for (byte j = 0; j < height * 2; j += 2) {
-            write(buf[j], buf[j + 1]);
-            write(buf[j], buf[j + 1]);
-        }
-        for (byte j = 0; j < height * 2; j += 2) {
-            write(buf[j], buf[j + 1]);
-            write(buf[j], buf[j + 1]);
-        }
-    } while (i--);
-    m_y += width * 2;
-}
-
-*/

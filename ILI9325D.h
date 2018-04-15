@@ -1,11 +1,11 @@
 /*************************************************************************
-modified ILI9325D API for atmega328p(Arduino Nano/Uno)
+modified ILI9325D API for atmega328p(Arduino Nano/Uno) and WiringPi on ARM
 @author Hank
 @page https://github.com/hankso
 *************************************************************************/
 
-#ifndef ILI9325D_328P_H
-#define ILI9325D_328P_H
+#ifndef ILI9325D_H
+#define ILI9325D_H
 
 #define White          0xFFFF
 #define Black          0x0000
@@ -27,10 +27,10 @@ modified ILI9325D API for atmega328p(Arduino Nano/Uno)
 #define RGB16_WHITE    0xFFFF
 #define RGB16_BLACK    0x0000
 
-class ILI9325D_328p
+class ILI9325D
 {
     public:
-        ILI9325D_328p(uint8_t PIN_CS, uint8_t PIN_RS, uint8_t PIN_RST,
+        ILI9325D(uint8_t PIN_CS, uint8_t PIN_RS, uint8_t PIN_RST,
                       uint8_t PIN_SCL, uint8_t PIN_SDA,
                       uint16_t width, uint16_t height);
 
